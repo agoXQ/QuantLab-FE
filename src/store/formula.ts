@@ -8,13 +8,14 @@ export interface SavedFormula {
   rule_type: RuleType;
   expression: string;
   description: string;
+  visibility: number;
   created_at: number;
   updated_at: number;
 }
 
 interface FormulaStore {
   formulas: SavedFormula[];
-  add: (f: Omit<SavedFormula, 'id' | 'created_at' | 'updated_at'>) => string;
+  add: (f: Omit<SavedFormula, 'id' | 'visibility' | 'created_at' | 'updated_at'> & { visibility?: number }) => string;
   update: (id: string, patch: Partial<Omit<SavedFormula, 'id' | 'created_at'>>) => void;
   remove: (id: string) => void;
   getByType: (type: RuleType) => SavedFormula[];
@@ -32,6 +33,7 @@ const seedFormulas: SavedFormula[] = [
     rule_type: 'stock_select',
     expression: 'ROE > 15\nAND PE < 20\nAND MarketCap > 5e9',
     description: 'ROE 大于 15 且 PE 小于 20 且市值大于 50 亿',
+    visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
   },
@@ -41,6 +43,7 @@ const seedFormulas: SavedFormula[] = [
     rule_type: 'buy_rule',
     expression: 'CROSS(MA(CLOSE,5), MA(CLOSE,20))',
     description: '5 日均线上穿 20 日均线',
+    visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
   },
@@ -50,6 +53,7 @@ const seedFormulas: SavedFormula[] = [
     rule_type: 'sell_rule',
     expression: 'CLOSE < MA(CLOSE,20)',
     description: '收盘价跌破 20 日均线',
+    visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
   },
@@ -59,6 +63,7 @@ const seedFormulas: SavedFormula[] = [
     rule_type: 'position_rule',
     expression: '0.1',
     description: '每只股票 10% 仓位',
+    visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
   },
@@ -68,6 +73,7 @@ const seedFormulas: SavedFormula[] = [
     rule_type: 'ranking_rule',
     expression: 'ROE * ProfitGrowth',
     description: 'ROE 乘以利润增长率作为排序权重',
+    visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
   },
@@ -87,7 +93,7 @@ export const useFormulaStore = create<FormulaStore>()(
         set((s) => ({
           formulas: [
             ...s.formulas,
-            { ...f, id, created_at: now, updated_at: now },
+            { ...f, visibility: f.visibility ?? 1, id, created_at: now, updated_at: now },
           ],
         }));
         return id;

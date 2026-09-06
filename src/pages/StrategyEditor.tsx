@@ -21,18 +21,18 @@ import {
   SaveOutlined,
   SendOutlined,
   CodeOutlined,
-  ThunderboltOutlined,
   AppstoreOutlined,
 } from '@ant-design/icons';
 import { strategyApi } from '@/api/strategy';
-import { formulaApi, type FunctionDefinition } from '@/api/formula';
+import { formulaApi, type FormulaExample, type FunctionDefinition } from '@/api/formula';
 import { useFormulaStore, type SavedFormula } from '@/store/formula';
 import { RULE_TYPES, RULE_TYPE_MAP } from '@/dsl/ruleTypes';
 import { ApiError } from '@/api/client';
 import FormulaEditor from '@/components/FormulaEditor';
-import { BUILTIN_VARIABLES } from '@/dsl/language';
+import DslReferencePanel from '@/components/DslReferencePanel';
+import FormulaExplainPanel from '@/components/FormulaExplainPanel';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 interface FormValues {
   title: string;
@@ -77,6 +77,14 @@ export default function StrategyEditor() {
     queryFn: () => formulaApi.listFunctions(),
     staleTime: 600_000,
   });
+
+  const { data: remoteFormulas = [] } = useQuery({
+    queryKey: ['saved-formulas'],
+    queryFn: () => formulaApi.listSaved({ limit: 200 }),
+    retry: false,
+  });
+
+  const savedFormulas: SavedFormula[] = remoteFormulas.length > 0 ? remoteFormulas : formulaStore.formulas;
 
   const latest = useMemo(() => versions?.[0], [versions]);
 
@@ -188,8 +196,18 @@ export default function StrategyEditor() {
   // When a saved formula is picked from the dropdown, write its expression
   // into the rule slot. The user can still edit inline afterwards.
   const pickFormula = (field: string, formulaId: string) => {
-    const f = formulaStore.formulas.find((x) => x.id === formulaId);
+    const f = savedFormulas.find((x) => x.id === formulaId);
     if (f) updateRule(field, f.expression);
+  };
+
+  const applyExample = (example: FormulaExample) => {
+    const rule = RULE_TYPES.find((item) => item.type === example.rule_type);
+    if (!rule) {
+      message.warning('该示例暂不匹配当前策略槽位');
+      return;
+    }
+    updateRule(rule.field, example.expression);
+    message.success(`已套用到${rule.label}`);
   };
 
   return (
@@ -244,7 +262,7 @@ export default function StrategyEditor() {
                 key={rt.type}
                 def={rt}
                 value={rules[rt.field] ?? ''}
-                formulas={formulaStore.getByType(rt.type)}
+                formulas={savedFormulas.filter((f) => f.rule_type === rt.type)}
                 onChange={(val) => updateRule(rt.field, val)}
                 onPick={(fid) => pickFormula(rt.field, fid)}
               />
@@ -259,7 +277,7 @@ export default function StrategyEditor() {
         </Col>
 
         <Col span={7}>
-          <DslReferencePanel functions={functions} />
+          <DslReferencePanel functions={functions} onApplyExample={applyExample} />
         </Col>
       </Row>
     </Space>
@@ -309,101 +327,7 @@ function RuleSlot({
         height="72px"
         validate={!!value}
       />
-    </div>
-  );
-}
-
-function DslReferencePanel({ functions }: { functions: FunctionDefinition[] }) {
-  const fnByCategory = useMemo(() => {
-    const groups: Record<string, FunctionDefinition[]> = {};
-    for (const fn of functions) (groups[fn.category] ??= []).push(fn);
-    return groups;
-  }, [functions]);
-
-  const varByCategory = useMemo(() => {
-    const groups: Record<string, typeof BUILTIN_VARIABLES> = {};
-    for (const v of BUILTIN_VARIABLES) (groups[v.category] ??= []).push(v);
-    return groups;
-  }, []);
-
-  const categoryLabel: Record<string, string> = {
-    Technical: '技术指标函数',
-    Math: '数学函数',
-    TimeSeries: '时序函数',
-    Signal: '信号函数',
-    行情: '行情变量',
-    财务: '财务变量',
-    成长: '成长变量',
-    市值: '市值变量',
-    别名: '变量别名',
-  };
-
-  return (
-    <Card title={<Space><ThunderboltOutlined /> DSL 参考</Space>} styles={{ body: { padding: 16 } }}>
-      <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
-        函数名大小写不敏感，规则间用 AND / OR / NOT 连接。输入时自动补全，Ctrl+Space 手动触发，Tab / Enter 确认。
-      </Paragraph>
-
-      {Object.entries(fnByCategory).map(([cat, fns]) => (
-        <ReferenceGroup key={`fn-${cat}`} title={categoryLabel[cat] ?? cat}>
-          {fns.map((fn) => (
-            <ReferenceItem
-              key={fn.name}
-              code={fn.params.length ? `${fn.name}(${fn.params.map((p) => p.name).join(', ')})` : `${fn.name}()`}
-              note={fn.description}
-              ret={fn.return_type}
-            />
-          ))}
-        </ReferenceGroup>
-      ))}
-
-      {Object.entries(varByCategory).map(([cat, vars]) => (
-        <ReferenceGroup key={`var-${cat}`} title={categoryLabel[cat] ?? cat}>
-          {vars.map((v) => (
-            <ReferenceItem key={v.name} code={v.name} note={v.description} ret={v.type} />
-          ))}
-        </ReferenceGroup>
-      ))}
-
-      <Divider style={{ margin: '10px 0' }} />
-      <Space size={4} wrap>
-        <Tag bordered={false} color="green">AND OR NOT</Tag>
-        <Tag bordered={false} color="blue">TRUE FALSE</Tag>
-        <Tag bordered={false} color="orange">+ - * / %</Tag>
-        <Tag bordered={false} color="orange">&gt; &lt; &gt;= &lt;= == !=</Tag>
-      </Space>
-    </Card>
-  );
-}
-
-function ReferenceGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <Text strong style={{ fontSize: 12, color: '#16c784' }}>{title}</Text>
-      <div style={{ marginTop: 6 }}>{children}</div>
-    </div>
-  );
-}
-
-function ReferenceItem({ code, note, ret }: { code: string; note: string; ret?: string }) {
-  return (
-    <div
-      style={{
-        padding: '4px 0',
-        borderBottom: '1px solid #21262d',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
-        gap: 8,
-      }}
-    >
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#e6edf3', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {code}
-        </code>
-        <Text style={{ fontSize: 10, color: '#8b949e' }}>{note}</Text>
-      </div>
-      {ret && <Tag bordered={false} style={{ fontSize: 10, flexShrink: 0, margin: 0 }}>{ret}</Tag>}
+      <FormulaExplainPanel formula={value} buttonText="解释规则" compact />
     </div>
   );
 }

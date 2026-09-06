@@ -17,6 +17,10 @@ const StrategyDetail = lazy(() => import('@/pages/StrategyDetail'));
 const StrategyEditor = lazy(() => import('@/pages/StrategyEditor'));
 const Rankings = lazy(() => import('@/pages/Rankings'));
 const Backtests = lazy(() => import('@/pages/Backtests'));
+const Trainings = lazy(() => import('@/pages/Trainings'));
+const TrainingRecordDetail = lazy(() => import('@/pages/TrainingRecordDetail'));
+const Community = lazy(() => import('@/pages/Community'));
+const CommunityDetail = lazy(() => import('@/pages/CommunityDetail'));
 const BacktestCreate = lazy(() => import('@/pages/BacktestCreate'));
 const BacktestDetail = lazy(() => import('@/pages/BacktestDetail'));
 const Portfolios = lazy(() => import('@/pages/Portfolios'));
@@ -71,6 +75,10 @@ export default function App() {
                   <Route path="/rankings" element={<Rankings />} />
                   <Route path="/backtests" element={<Backtests />} />
                   <Route path="/backtests/:id" element={<BacktestDetail />} />
+                  <Route path="/trainings" element={<Trainings />} />
+                  <Route path="/trainings/records/:sessionId" element={<TrainingRecordDetail />} />
+                  <Route path="/community" element={<Community />} />
+                  <Route path="/community/:id" element={<CommunityDetail />} />
                   <Route path="/portfolios" element={<Portfolios />} />
                   <Route path="/portfolios/:id" element={<PortfolioDetail />} />
                   <Route path="/u/:id" element={<Profile />} />

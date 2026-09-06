@@ -3,9 +3,11 @@ import {
   type CompletionResult,
   autocompletion,
   acceptCompletion,
+  snippetCompletion,
 } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { sortCategorizedItems } from '@/dsl/categories';
 import { DSL_KEYWORDS, BUILTIN_VARIABLES, type DslVariable } from './language';
 import type { FunctionDefinition } from '@/api/formula';
 
@@ -17,13 +19,19 @@ export function buildCompletionSource(
   functions: FunctionDefinition[],
   variables: DslVariable[] = BUILTIN_VARIABLES,
 ) {
-  const fnCompletions = functions.map((fn) => ({
-    label: fn.name,
-    type: 'function' as const,
-    detail: fn.return_type,
-    info: `${fn.description}\n${fn.params.map((p) => `  ${p.name}: ${p.param_type}`).join('\n')}`,
-    apply: `${fn.name}(`,
-  }));
+  const fnCompletions = sortCategorizedItems(functions).map((fn) => {
+    const signature = `${fn.name}(${fn.params.map((p) => p.name).join(', ')})`;
+    const snippet =
+      fn.params.length > 0
+        ? `${fn.name}(${fn.params.map((p, index) => `\${${index + 1}:${p.name}}`).join(', ')})`
+        : `${fn.name}()`;
+    return snippetCompletion(snippet, {
+      label: fn.name,
+      type: 'function' as const,
+      detail: `${fn.return_type} · ${signature}`,
+      info: `${fn.description}\n${fn.params.map((p) => `  ${p.name}: ${p.param_type}`).join('\n')}`,
+    });
+  });
 
   const varCompletions = variables.map((v) => ({
     label: v.name,

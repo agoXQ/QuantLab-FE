@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card,
@@ -15,6 +15,8 @@ import {
   App,
   Row,
   Col,
+  Radio,
+  Select,
 } from 'antd';
 import { ArrowLeftOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -28,14 +30,18 @@ const { RangePicker } = DatePicker;
 
 interface RangeValues {
   range: [Dayjs, Dayjs];
+  execution_mode: 'trading' | 'rebalance';
+  rebalance_period: 'daily' | 'weekly' | 'monthly';
 }
 
 export default function BacktestCreate() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
   const { message } = App.useApp();
   const sid = Number(id);
+  const requestedVersionId = Number(searchParams.get('version_id') || 0);
   const [form] = Form.useForm<RangeValues>();
 
   const { data: strategy, isLoading } = useQuery({
@@ -50,7 +56,10 @@ export default function BacktestCreate() {
     enabled: !!sid,
   });
 
-  const latestVersion = useMemo(() => versions?.[0], [versions]);
+  const latestVersion = useMemo(
+    () => versions?.find((version) => version.id === requestedVersionId) ?? versions?.[0],
+    [requestedVersionId, versions],
+  );
 
   const createMutation = useMutation({
     mutationFn: async (v: RangeValues) => {
@@ -62,6 +71,8 @@ export default function BacktestCreate() {
         version_id: latestVersion.id,
         start_date: start,
         end_date: end,
+        execution_mode: v.execution_mode ?? 'trading',
+        rebalance_period: v.rebalance_period ?? 'weekly',
       });
       if (!jobId || jobId <= 0) {
         throw new Error('回测任务创建失败，后端未返回有效任务 ID');
@@ -91,8 +102,7 @@ export default function BacktestCreate() {
         <Col span={15}>
           <Card title={<Title level={5} style={{ margin: 0 }}>新建回测</Title>}>
             <Paragraph type="secondary" style={{ fontSize: 12 }}>
-              选择回测区间。回测将以最新版本（v{latestVersion?.version_no ?? latestVersion?.id ?? '—'}）的公式规则执行，
-              采用日线频率，扣除手续费与滑点。
+              选择回测区间和执行模型。默认交易型策略只在买入/卖出信号触发时交易；组合轮动模式按调仓频率做目标池再平衡。
             </Paragraph>
             <Form
               form={form}
@@ -100,6 +110,8 @@ export default function BacktestCreate() {
               requiredMark
               initialValues={{
                 range: [dayjs().subtract(3, 'year'), dayjs()],
+                execution_mode: 'trading',
+                rebalance_period: 'weekly',
               }}
             >
               <Form.Item
@@ -108,6 +120,39 @@ export default function BacktestCreate() {
                 rules={[{ required: true, message: '请选择回测区间' }]}
               >
                 <RangePicker style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="execution_mode"
+                label="回测模型"
+                tooltip="交易型适合形态/买卖信号策略；组合轮动适合因子选股和定期调仓策略。"
+                rules={[{ required: true, message: '请选择回测模型' }]}
+              >
+                <Radio.Group
+                  optionType="button"
+                  buttonStyle="solid"
+                  options={[
+                    { label: '交易型策略（默认）', value: 'trading' },
+                    { label: '组合轮动/再平衡', value: 'rebalance' },
+                  ]}
+                />
+              </Form.Item>
+              <Form.Item shouldUpdate={(prev, cur) => prev.execution_mode !== cur.execution_mode} noStyle>
+                {({ getFieldValue }) => (
+                  <Form.Item
+                    name="rebalance_period"
+                    label="调仓频率"
+                    tooltip="仅组合轮动/再平衡模式生效。"
+                  >
+                    <Select
+                      disabled={getFieldValue('execution_mode') !== 'rebalance'}
+                      options={[
+                        { label: '每日', value: 'daily' },
+                        { label: '每周', value: 'weekly' },
+                        { label: '每月', value: 'monthly' },
+                      ]}
+                    />
+                  </Form.Item>
+                )}
               </Form.Item>
               <Form.Item>
                 <Button
@@ -129,14 +174,18 @@ export default function BacktestCreate() {
             <Descriptions size="small" column={1}>
               <Descriptions.Item label="名称">{strategy.title}</Descriptions.Item>
               <Descriptions.Item label="分类">{strategy.category || '—'}</Descriptions.Item>
-              <Descriptions.Item label="最新版本">
+              <Descriptions.Item label={requestedVersionId ? '指定版本' : '最新版本'}>
                 {latestVersion ? `v${latestVersion.version_no ?? latestVersion.id}` : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
                 {dayjs.unix(strategy.created_at).format('YYYY-MM-DD')}
               </Descriptions.Item>
             </Descriptions>
-            {latestVersion?.formula_text && (
+            {latestVersion?.can_view_formula === false ? (
+              <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+                暂无权限查看该版本公式明文，但可以按版本权限创建回测任务。
+              </Paragraph>
+            ) : latestVersion?.formula_text && (
               <>
                 <Text strong style={{ display: 'block', margin: '12px 0 6px' }}>
                   公式预览

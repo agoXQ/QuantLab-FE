@@ -19,7 +19,7 @@ export default function MetricCard({ title, value, precision = 2, suffix, prefix
         precision={precision}
         suffix={suffix}
         prefix={prefix}
-        valueStyle={{ color: valueColor ?? '#e6edf3', fontSize: 22, fontFamily: "'JetBrains Mono', monospace" }}
+        styles={{ content: { color: valueColor ?? '#e6edf3', fontSize: 22, fontFamily: "'JetBrains Mono', monospace" } }}
       />
     </Card>
   );

@@ -4,9 +4,10 @@ import { Card, Table, Input, Tag, Typography, Space, Segmented, Empty, Button } 
 import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { strategyApi } from '@/api/strategy';
+import { useTokenStore } from '@/store/auth';
 import type { Strategy } from '@/types';
 
-const { Title } = Typography;
+const { Link, Text, Title } = Typography;
 
 const statusLabels: Record<number, { text: string; color: string }> = {
   1: { text: '草稿', color: 'default' },
@@ -14,14 +15,22 @@ const statusLabels: Record<number, { text: string; color: string }> = {
   3: { text: '已归档', color: 'orange' },
 };
 
+const visibilityLabels: Record<number, { text: string; color: string }> = {
+  1: { text: '私有', color: 'default' },
+  2: { text: '公开', color: 'green' },
+  3: { text: '不列出', color: 'orange' },
+};
+
 export default function StrategyList() {
   const navigate = useNavigate();
+  const userId = useTokenStore((state) => state.userId);
   const [keyword, setKeyword] = useState('');
   const [sort, setSort] = useState<string>('favorite_count');
+  const [scope, setScope] = useState<'square' | 'mine'>('square');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['strategies', keyword, sort],
-    queryFn: () => strategyApi.list({ keyword, sort, limit: 50 }),
+    queryKey: ['strategies', scope, userId, keyword, sort],
+    queryFn: () => strategyApi.list({ keyword, sort, author_id: scope === 'mine' && userId ? userId : undefined, limit: 50 }),
     staleTime: 30_000,
   });
 
@@ -34,6 +43,25 @@ export default function StrategyList() {
           {title}
         </a>
       ),
+    },
+    {
+      title: '作者',
+      dataIndex: 'author_name',
+      width: 140,
+      ellipsis: true,
+      render: (name: string, r: Strategy) =>
+        r.author_id ? (
+          <Link
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(`/u/${r.author_id}`);
+            }}
+          >
+            {name || `用户 #${r.author_id}`}
+          </Link>
+        ) : (
+          <Text type="secondary">匿名用户</Text>
+        ),
     },
     {
       title: '分类',
@@ -65,6 +93,15 @@ export default function StrategyList() {
         return <Tag bordered={false} color={meta.color}>{meta.text}</Tag>;
       },
     },
+    {
+      title: '可见性',
+      dataIndex: 'visibility',
+      width: 90,
+      render: (v: number) => {
+        const meta = visibilityLabels[v] ?? { text: '—', color: 'default' };
+        return <Tag bordered={false} color={meta.color}>{meta.text}</Tag>;
+      },
+    },
     { title: '收藏', dataIndex: 'favorite_count', width: 80, align: 'right' as const, sorter: (a: Strategy, b: Strategy) => a.favorite_count - b.favorite_count },
     { title: 'Fork', dataIndex: 'fork_count', width: 80, align: 'right' as const },
     { title: '浏览', dataIndex: 'view_count', width: 80, align: 'right' as const },
@@ -73,8 +110,19 @@ export default function StrategyList() {
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={4} style={{ margin: 0 }}>策略库</Title>
+        <Space direction="vertical" size={2}>
+          <Title level={4} style={{ margin: 0 }}>{scope === 'square' ? '策略广场' : '我的策略'}</Title>
+          <Text type="secondary">{scope === 'square' ? '发现公开策略，查看表现、Fork 到自己的研究空间。' : '管理草稿、私有策略和已发布策略。'}</Text>
+        </Space>
         <Space>
+          <Segmented
+            value={scope}
+            onChange={(v) => setScope(v as 'square' | 'mine')}
+            options={[
+              { label: '策略广场', value: 'square' },
+              { label: '我的策略', value: 'mine' },
+            ]}
+          />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/strategies/new')}>新建策略</Button>
           <Input
             placeholder="搜索策略名称、标签..."

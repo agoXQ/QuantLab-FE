@@ -4,7 +4,7 @@ import type { Strategy, StrategyVersion, Page } from '@/types';
 // The gateway normalizes all list responses to { items, cursor } (see
 // doc/API). Single resources keep their wrapper field (e.g. { strategy }).
 export const strategyApi = {
-  list: (params?: { keyword?: string; sort?: string; limit?: number; cursor?: string }) =>
+  list: (params?: { keyword?: string; sort?: string; author_id?: number; limit?: number; cursor?: string }) =>
     apiClient.get<Page<Strategy>>('/strategies', { params }).then((r) => r.data),
   search: (params?: { keyword?: string; tag?: string; author?: number; category?: string; sort?: string; limit?: number }) =>
     apiClient.get<Page<Strategy>>('/strategies/search', { params }).then((r) => r.data),
@@ -27,5 +27,7 @@ export const strategyApi = {
     apiClient.post(`/strategies/${id}/publish`, { version_id: versionId }).then((r) => r.data),
   archive: (id: number) => apiClient.post(`/strategies/${id}/archive`).then((r) => r.data),
   fork: (id: number) =>
-    apiClient.post<{ new_strategy_id: number }>(`/strategies/${id}/fork`).then((r) => r.data.new_strategy_id),
+    apiClient
+      .post<{ new_strategy_id?: number; strategy_id?: number }>(`/strategies/${id}/fork`)
+      .then((r) => r.data.new_strategy_id ?? r.data.strategy_id ?? 0),
 };

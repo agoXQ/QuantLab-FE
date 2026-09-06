@@ -12,14 +12,15 @@ interface Props {
 }
 
 export default function MetricValue({ value, suffix, precision = 2, prefix }: Props) {
-  const color = value > 0 ? '#16c784' : value < 0 ? '#ea3943' : '#8b949e';
-  const sign = value > 0 ? '+' : '';
-  return (
-    <Text style={{ color, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-      {prefix}
-      {sign}
-      {value.toFixed(precision)}
-      {suffix}
-    </Text>
-  );
+	const safeValue = Number.isFinite(value) ? value : 0;
+	const color = safeValue > 0 ? '#16c784' : safeValue < 0 ? '#ea3943' : '#8b949e';
+	const sign = safeValue > 0 ? '+' : '';
+	return (
+		<Text style={{ color, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
+			{prefix}
+			{sign}
+			{safeValue.toFixed(precision)}
+			{suffix}
+		</Text>
+	);
 }

@@ -34,6 +34,13 @@ export interface MarketBar {
   adjustment: string;
 }
 
+export interface TradingCalendarDay {
+  trade_date?: string;
+  tradeDate?: string;
+  is_open?: boolean;
+  isOpen?: boolean;
+}
+
 // Market Data Service, mounted under /api/v1/markets by the gateway.
 export const marketApi = {
   listSecurities: (params?: { limit?: number; cursor?: string; exchange?: string; market?: string; asset_type?: string }) =>
@@ -55,4 +62,6 @@ export const marketApi = {
     apiClient.get<{ items: string[] }>('/markets/industries').then((r) => r.data.items ?? []),
   listVersions: () =>
     apiClient.get<{ items: DataVersion[] }>('/markets/versions').then((r) => r.data.items ?? []),
+  getCalendar: (params: { start_date: string; end_date: string }) =>
+    apiClient.get<{ items: TradingCalendarDay[] }>('/markets/calendar', { params }).then((r) => r.data.items ?? []),
 };

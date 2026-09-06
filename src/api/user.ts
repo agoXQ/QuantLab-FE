@@ -31,5 +31,5 @@ export const userApi = {
   follow: (id: number) => apiClient.post(`/users/${id}/follow`).then((r) => r.data),
   unfollow: (id: number) => apiClient.delete(`/users/${id}/follow`).then((r) => r.data),
   listStrategies: (id: number, params?: { limit?: number; cursor?: string }) =>
-    apiClient.get<Page<Strategy>>(`/users/${id}/strategies`, { params }).then((r) => r.data),
+    apiClient.get<Page<Strategy>>('/strategies', { params: { ...params, author_id: id } }).then((r) => r.data),
 };

@@ -1,9 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { Card, Table, Typography, Space, Empty, Tag } from 'antd';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, Card, Empty, Progress, Space, Table, Tag, Typography } from 'antd';
 import { LineChartOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { backtestApi } from '@/api/backtest';
-import { useTokenStore } from '@/store/auth';
 import dayjs from 'dayjs';
 import type { BacktestJob } from '@/types';
 
@@ -19,12 +18,26 @@ const statusColor: Record<string, string> = {
 
 export default function Backtests() {
   const navigate = useNavigate();
-  const userId = useTokenStore((s) => s.userId);
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['backtests', userId],
-    queryFn: () => backtestApi.list({ user_id: userId ?? undefined, limit: 50 }),
+    queryKey: ['backtests'],
+    queryFn: () => backtestApi.list({ limit: 100 }),
     staleTime: 30_000,
+    refetchInterval: (q) => {
+      const items = q.state.data?.items ?? [];
+      return items.some((item) => item.status === 'RUNNING' || item.status === 'QUEUED') ? 3000 : false;
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => backtestApi.cancel(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['backtests'] }),
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: (id: number) => backtestApi.retry(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['backtests'] }),
   });
 
   const columns = [
@@ -48,12 +61,46 @@ export default function Backtests() {
       width: 100,
       render: (s: string) => <Tag bordered={false} color={statusColor[s] ?? 'default'}>{s}</Tag>,
     },
+    {
+      title: '进度',
+      dataIndex: 'progress',
+      width: 180,
+      render: (_: unknown, r: BacktestJob) => {
+        const percent = Math.min(100, Math.max(0, Math.round((r.progress ?? 0) * 1000) / 10));
+        if (r.status === 'COMPLETED') return <Progress percent={100} size="small" />;
+        if (r.status === 'FAILED' || r.status === 'CANCELLED') return <Text type="secondary" ellipsis>{r.error_message || '—'}</Text>;
+        return <Progress percent={percent} size="small" status={r.status === 'RUNNING' ? 'active' : 'normal'} />;
+      },
+    },
     { title: '初始资金', dataIndex: 'initial_capital', width: 120, align: 'right' as const, render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{v?.toLocaleString() ?? '—'}</Text> },
     {
       title: '创建时间',
       dataIndex: 'created_at',
       width: 160,
       render: (t: number) => (t ? dayjs.unix(t).format('YYYY-MM-DD HH:mm') : '—'),
+    },
+    {
+      title: '操作',
+      width: 150,
+      render: (_: unknown, r: BacktestJob) => {
+        const running = r.status === 'RUNNING' || r.status === 'QUEUED';
+        const retryable = r.status === 'FAILED' || r.status === 'CANCELLED';
+        return (
+          <Space onClick={(event) => event.stopPropagation()}>
+            {running && (
+              <Button danger size="small" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate(r.id)}>
+                取消
+              </Button>
+            )}
+            {retryable && (
+              <Button type="primary" size="small" loading={retryMutation.isPending} onClick={() => retryMutation.mutate(r.id)}>
+                重试
+              </Button>
+            )}
+            <Button size="small" onClick={() => navigate(`/backtests/${r.id}`)}>详情</Button>
+          </Space>
+        );
+      },
     },
   ];
 

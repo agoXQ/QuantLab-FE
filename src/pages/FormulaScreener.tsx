@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { App, Button, Card, Col, DatePicker, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, App, Button, Card, Col, DatePicker, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { AppstoreOutlined, ExperimentOutlined, FilterOutlined, PlayCircleOutlined, SaveOutlined, StockOutlined } from '@ant-design/icons';
 import {
   CandlestickSeries,
@@ -22,8 +22,10 @@ import dayjs, { type Dayjs } from 'dayjs';
 import FormulaEditor from '@/components/FormulaEditor';
 import { formulaApi, type ScreenResult } from '@/api/formula';
 import { marketApi, type MarketBar } from '@/api/market';
+import { strategyApi } from '@/api/strategy';
 import { useFormulaStore } from '@/store/formula';
 import { ApiError } from '@/api/client';
+import { useSearchParams } from 'react-router-dom';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -67,6 +69,10 @@ function parseManualCodes(raw: string) {
 
 export default function FormulaScreener() {
   const { message } = App.useApp();
+  const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const sourceStrategyId = Number(searchParams.get('strategy_id') || 0);
+  const sourceVersionId = Number(searchParams.get('version_id') || 0);
   const formulaStore = useFormulaStore();
   const [expr, setExpr] = useState('ROE > 15 AND PE < 20');
   const [asOf, setAsOf] = useState<Dayjs | null>(dayjs());
@@ -78,6 +84,7 @@ export default function FormulaScreener() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<ScreenerRow | null>(null);
   const [form] = Form.useForm<SaveFormulaForm>();
+  const hasStrategySource = sourceStrategyId > 0 && sourceVersionId > 0;
 
   const { data: exchangeOptions = [] } = useQuery({
     queryKey: ['market-exchanges'],
@@ -90,6 +97,40 @@ export default function FormulaScreener() {
     queryFn: () => marketApi.listIndustries(),
     staleTime: 300_000,
   });
+
+  const { data: remoteFormulas = [] } = useQuery({
+    queryKey: ['saved-formulas'],
+    queryFn: () => formulaApi.listSaved({ rule_type: 'stock_select', limit: 200 }),
+    retry: false,
+  });
+
+  const { data: sourceStrategy } = useQuery({
+    queryKey: ['screener-source-strategy', sourceStrategyId],
+    queryFn: () => strategyApi.get(sourceStrategyId),
+    enabled: hasStrategySource,
+    staleTime: 60_000,
+  });
+
+  const { data: sourceVersion } = useQuery({
+    queryKey: ['screener-source-version', sourceVersionId],
+    queryFn: () => strategyApi.getVersion(sourceVersionId),
+    enabled: hasStrategySource,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!hasStrategySource || !sourceVersion) return;
+    const formula = sourceVersion.formula_text?.trim();
+    if (!formula) {
+      message.warning('该策略版本未返回可用于选股的公式');
+      return;
+    }
+    setExpr(formula);
+  }, [hasStrategySource, message, sourceVersion]);
+
+  const savedStockSelectFormulas = remoteFormulas.length > 0
+    ? remoteFormulas
+    : formulaStore.getByType('stock_select');
 
   const exchanges = useMemo(() => uniqueSorted(exchangeOptions), [exchangeOptions]);
   const industries = useMemo(() => uniqueSorted(industryOptions), [industryOptions]);
@@ -166,12 +207,26 @@ export default function FormulaScreener() {
       message.error('请输入选股公式');
       return;
     }
-    formulaStore.add({
-      name: values.name,
-      description: values.description,
-      expression: expr,
-      rule_type: 'stock_select',
-    });
+    try {
+      await formulaApi.createSaved({
+        name: values.name,
+        description: values.description,
+        expression: expr,
+        rule_type: 'stock_select',
+      });
+      qc.invalidateQueries({ queryKey: ['saved-formulas'] });
+    } catch (e) {
+      formulaStore.add({
+        name: values.name,
+        description: values.description,
+        expression: expr,
+        rule_type: 'stock_select',
+      });
+      message.warning(e instanceof ApiError ? `后端保存失败，已暂存本地：${e.message}` : '后端保存失败，已暂存本地');
+      setSaveOpen(false);
+      form.resetFields();
+      return;
+    }
     setSaveOpen(false);
     form.resetFields();
     message.success('选股公式已保存');
@@ -196,14 +251,22 @@ export default function FormulaScreener() {
         <Col span={15}>
           <Card title={<Space><ExperimentOutlined /> 选股公式</Space>}>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              {hasStrategySource && (
+                <Alert
+                  showIcon
+                  type="info"
+                  message="使用策略版本选股"
+                  description={`来源：${sourceStrategy?.title || `策略 #${sourceStrategyId}`} · ${sourceVersion ? `v${sourceVersion.version_no || sourceVersion.id}` : `版本 #${sourceVersionId}`}`}
+                />
+              )}
               <Select
                 placeholder="从公式库加载选股公式"
                 style={{ width: 320 }}
                 allowClear
                 suffixIcon={<AppstoreOutlined />}
-                options={formulaStore.getByType('stock_select').map((f) => ({ label: f.name, value: f.id }))}
+                options={savedStockSelectFormulas.map((f) => ({ label: f.name, value: f.id }))}
                 onChange={(id) => {
-                  const formula = formulaStore.formulas.find((f) => f.id === id);
+                  const formula = savedStockSelectFormulas.find((f) => f.id === id);
                   if (formula) setExpr(formula.expression);
                 }}
               />

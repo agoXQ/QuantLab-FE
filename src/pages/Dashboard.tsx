@@ -16,6 +16,10 @@ const periodLabels: Record<string, number> = {
   '近3月': 3,
 };
 
+function numberValue(value?: number | null) {
+  return Number.isFinite(value) ? value as number : 0;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<string>('全部');
@@ -45,6 +49,8 @@ export default function Dashboard() {
     {
       title: '策略',
       dataIndex: 'strategy_name',
+      width: 180,
+      ellipsis: true,
       render: (name: string, record: RankingItem) => (
         <a onClick={() => navigate(`/strategies/${record.strategy_id}`)} style={{ color: '#e6edf3' }}>
           {name}
@@ -62,7 +68,7 @@ export default function Dashboard() {
       dataIndex: 'total_return',
       width: 110,
       align: 'right' as const,
-      sorter: (a: RankingItem, b: RankingItem) => a.total_return - b.total_return,
+      sorter: (a: RankingItem, b: RankingItem) => numberValue(a.total_return) - numberValue(b.total_return),
       render: (v: number) => <MetricValue value={v * 100} suffix="%" precision={2} />,
     },
     {
@@ -70,7 +76,7 @@ export default function Dashboard() {
       dataIndex: 'sharpe_ratio',
       width: 80,
       align: 'right' as const,
-      render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{v.toFixed(2)}</Text>,
+      render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{numberValue(v).toFixed(2)}</Text>,
     },
     {
       title: '最大回撤',
@@ -84,7 +90,7 @@ export default function Dashboard() {
       dataIndex: 'win_rate',
       width: 80,
       align: 'right' as const,
-      render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{(v * 100).toFixed(1)}%</Text>,
+      render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{(numberValue(v) * 100).toFixed(1)}%</Text>,
     },
     {
       title: '变动',
@@ -153,6 +159,7 @@ export default function Dashboard() {
                 rowKey="strategy_id"
                 pagination={false}
                 size="middle"
+                tableLayout="fixed"
                 onRow={(r) => ({ onClick: () => navigate(`/strategies/${r.strategy_id}`), style: { cursor: 'pointer' } })}
               />
             ) : (
