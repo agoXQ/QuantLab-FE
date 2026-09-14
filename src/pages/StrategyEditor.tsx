@@ -1,3 +1,4 @@
+import { isAvailableFormula } from '@/dsl/availability';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -84,7 +85,7 @@ export default function StrategyEditor() {
     retry: false,
   });
 
-  const savedFormulas: SavedFormula[] = remoteFormulas.length > 0 ? remoteFormulas : formulaStore.formulas;
+  const savedFormulas: SavedFormula[] = (remoteFormulas.length > 0 ? remoteFormulas : formulaStore.formulas).filter((f) => isAvailableFormula(f.expression));
 
   const latest = useMemo(() => versions?.[0], [versions]);
 
@@ -232,7 +233,7 @@ export default function StrategyEditor() {
           <Card title={<Space><CodeOutlined /> 策略信息</Space>}>
             <Form form={form} layout="vertical" requiredMark>
               <Form.Item name="title" label="策略名称" rules={[{ required: true, message: '请输入策略名称' }, { max: 60 }]}>
-                <Input placeholder="例如：ROE 价值选股" />
+                <Input placeholder="例如：价量趋势选股" />
               </Form.Item>
               <Row gutter={16}>
                 <Col span={8}>

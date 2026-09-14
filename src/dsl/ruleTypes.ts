@@ -30,7 +30,7 @@ export const RULE_TYPES: RuleTypeDef[] = [
     returnType: 'Boolean',
     required: true,
     hint: '返回 Boolean，筛选符合条件的股票',
-    example: 'ROE > 15\nAND PE < 20\nAND MarketCap > 5e9',
+    example: 'CLOSE > MA(CLOSE,20)\nAND VOL > MA(VOL,5)',
   },
   {
     type: 'buy_rule',
@@ -75,7 +75,7 @@ export const RULE_TYPES: RuleTypeDef[] = [
     returnType: 'Boolean',
     required: false,
     hint: '返回 Boolean，是否触发风控',
-    example: 'ATR(CLOSE,14) / CLOSE > 0.03',
+    example: 'CLOSE < MA(CLOSE,20) * 0.97',
   },
   {
     type: 'ranking_rule',
@@ -84,7 +84,7 @@ export const RULE_TYPES: RuleTypeDef[] = [
     returnType: 'Number',
     required: false,
     hint: '返回 Number，选股排序依据',
-    example: 'ROE * ProfitGrowth',
+    example: 'ROC(CLOSE,20)',
   },
 ];
 

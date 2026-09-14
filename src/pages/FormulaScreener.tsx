@@ -74,7 +74,7 @@ export default function FormulaScreener() {
   const sourceStrategyId = Number(searchParams.get('strategy_id') || 0);
   const sourceVersionId = Number(searchParams.get('version_id') || 0);
   const formulaStore = useFormulaStore();
-  const [expr, setExpr] = useState('ROE > 15 AND PE < 20');
+  const [expr, setExpr] = useState('CLOSE > MA(CLOSE,20) AND VOL > MA(VOL,5)');
   const [asOf, setAsOf] = useState<Dayjs | null>(dayjs());
   const [mode, setMode] = useState<UniverseMode>('filtered');
   const [exchange, setExchange] = useState<string | undefined>();
@@ -270,7 +270,7 @@ export default function FormulaScreener() {
                   if (formula) setExpr(formula.expression);
                 }}
               />
-              <FormulaEditor value={expr} onChange={setExpr} height="160px" placeholder="ROE > 15 AND PE < 20" />
+              <FormulaEditor value={expr} onChange={setExpr} height="160px" placeholder="CLOSE > MA(CLOSE,20) AND VOL > MA(VOL,5)" />
               <Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
                 选股公式应返回 Boolean，系统会对股票池逐只执行，并展示命中的股票。
               </Paragraph>
@@ -350,7 +350,7 @@ export default function FormulaScreener() {
       <Modal title="保存选股公式" open={saveOpen} onCancel={() => setSaveOpen(false)} onOk={handleSaveFormula} okText="保存" destroyOnHidden>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="公式名称" rules={[{ required: true, message: '请输入公式名称' }, { max: 40 }]}> 
-            <Input placeholder="例如：高ROE低PE" />
+            <Input placeholder="例如：价量趋势" />
           </Form.Item>
           <Form.Item name="description" label="描述">
             <Input placeholder="一句话说明选股逻辑" />

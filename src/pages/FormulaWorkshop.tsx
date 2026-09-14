@@ -1,3 +1,4 @@
+import { isAvailableFormula } from '@/dsl/availability';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -81,7 +82,7 @@ export default function FormulaWorkshop() {
     staleTime: 600_000,
   });
 
-  const formulas = remoteFormulas.length > 0 ? remoteFormulas : localFormulas;
+  const formulas = (remoteFormulas.length > 0 ? remoteFormulas : localFormulas).filter((f) => isAvailableFormula(f.expression));
   const filtered = filter === 'all' ? formulas : formulas.filter((f) => f.rule_type === filter);
   const publicFiltered = filter === 'all' ? publicFormulas : publicFormulas.filter((f) => f.rule_type === filter);
   const exampleFiltered = filter === 'all' ? examples : examples.filter((f) => f.rule_type === filter);
@@ -141,6 +142,11 @@ export default function FormulaWorkshop() {
       message.error('请输入公式表达式');
       return;
     }
+    const validation = await formulaApi.validate(expr);
+    if (!validation.valid) {
+      message.error(validation.error || '该公式包含已下架或暂不支持的能力');
+      return;
+    }
     if (editing) {
       if (editing.id.startsWith('seed-') || editing.id.startsWith('f-')) {
         update(editing.id, {
@@ -168,6 +174,10 @@ export default function FormulaWorkshop() {
           description: v.description,
         });
       } catch (e) {
+        if (e instanceof ApiError && e.status >= 400 && e.status < 500) {
+          message.error(e.message);
+          return;
+        }
         add({
           name: v.name,
           rule_type: v.rule_type,
@@ -436,7 +446,7 @@ export default function FormulaWorkshop() {
       >
         <Form form={form} layout="vertical" requiredMark>
           <Form.Item name="name" label="公式名称" rules={[{ required: true, message: '请输入名称' }, { max: 40 }]}>
-            <Input placeholder="例如：高ROE低估值" />
+            <Input placeholder="例如：价量趋势选股" />
           </Form.Item>
           <Form.Item name="rule_type" label="公式类型" rules={[{ required: true }]}>
             <Select

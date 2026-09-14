@@ -9,36 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 const { Text, Paragraph } = Typography;
 
 export const fallbackExamples: FormulaExample[] = [
-  {
-    id: 'tf-any-5m-trend',
-    title: '日线内 5m 趋势确认',
-    category: 'Timeframe',
-    rule_type: 'stock_select',
-    return_type: 'Boolean',
-    expression: 'ANY_TF("5m", CLOSE > MA(CLOSE, 20))',
-    description: '日线策略里，只要当日任意 5m 子K满足条件即触发。',
-    tags: ['多周期', '5m', '趋势'],
-  },
-  {
-    id: 'tf-every-30m-bullish',
-    title: '当日 30m 全部收阳',
-    category: 'Timeframe',
-    rule_type: 'buy_rule',
-    return_type: 'Boolean',
-    expression: 'EVERY_TF("30m", CLOSE >= OPEN)',
-    description: '当日所有 30m 子K均收阳。',
-    tags: ['多周期', '30m', '买入'],
-  },
-  {
-    id: 'tf-last-60m-rsi',
-    title: '最新 60m RSI 强势过滤',
-    category: 'Timeframe',
-    rule_type: 'stock_select',
-    return_type: 'Boolean',
-    expression: 'LAST_TF("60m", RSI(CLOSE, 14)) > 60',
-    description: '取最新 60m RSI 做精细过滤。',
-    tags: ['多周期', '60m', 'RSI'],
-  },
+  { id: 'signal-golden-cross', title: '均线金叉信号', category: 'Signal', rule_type: 'buy_rule', return_type: 'Signal', expression: 'CROSS(MA(CLOSE,5), MA(CLOSE,20))', description: '短均线上穿长均线。', tags: ['均线', '买入'] },
+  { id: 'risk-breakdown', title: '跌破趋势止损', category: 'Signal', rule_type: 'sell_rule', return_type: 'Signal', expression: 'CROSSDOWN(CLOSE, MA(CLOSE,20))', description: '收盘价跌破均线。', tags: ['均线', '卖出'] },
 ];
 
 interface Props {
@@ -74,7 +46,7 @@ export default function DslReferencePanel({ functions, onApplyExample }: Props) 
   return (
     <Card title={<Space><ThunderboltOutlined /> DSL 参考</Space>} styles={{ body: { padding: 16 } }}>
       <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
-        函数名大小写不敏感，规则间用 AND / OR / NOT 连接。输入时自动补全，Ctrl+Space 手动触发，Tab / Enter 确认。
+        当前开放开高低收、成交量和成交额公式；财务、多周期及未完成验证的指标暂不开放。AND / OR / NOT 仅用于公式最外层组合。函数名大小写不敏感。输入时自动补全，Ctrl+Space 手动触发，Tab / Enter 确认。
       </Paragraph>
 
       <ReferenceGroup title="公式示例">

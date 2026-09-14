@@ -1,3 +1,4 @@
+import { AVAILABLE_FUNCTIONS, isAvailableFormula } from '@/dsl/availability';
 import { ApiError, apiClient } from './client';
 import { sortCategorizedItems } from '@/dsl/categories';
 import type { RuleType } from '@/dsl/ruleTypes';
@@ -86,7 +87,7 @@ export interface EvaluateRankingItem {
 
 export interface EvaluateValueItem {
   stock_code: string;
-  value: number;
+  value: number | null;
 }
 
 export interface EvaluateResult {
@@ -187,7 +188,7 @@ export const formulaApi = {
   listFunctions: () =>
     apiClient
       .get<{ items?: FunctionDefinitionDTO[]; functions?: FunctionDefinitionDTO[] }>('/formulas/functions')
-      .then((r) => sortCategorizedItems((r.data.items ?? r.data.functions ?? []).map(normalizeFunction))),
+      .then((r) => sortCategorizedItems((r.data.items ?? r.data.functions ?? []).map(normalizeFunction).filter((f) => AVAILABLE_FUNCTIONS.has(f.name.toUpperCase())))),
   getFunction: (name: string) =>
     apiClient
       .get<{ function: FunctionDefinitionDTO }>(`/formulas/functions/${name}`)
@@ -195,7 +196,7 @@ export const formulaApi = {
   listExamples: () =>
     apiClient
       .get<{ items?: FormulaExample[]; examples?: FormulaExample[] }>('/formulas/examples')
-      .then((r) => r.data.items ?? r.data.examples ?? []),
+      .then((r) => (r.data.items ?? r.data.examples ?? []).filter((f) => isAvailableFormula(f.expression))),
   validate: (formula: string) =>
     apiClient
       .post<ValidationResult>('/formulas/validate', { formula })
@@ -240,7 +241,7 @@ export const formulaApi = {
   listSaved: (params?: { rule_type?: RuleType; scope?: 'mine' | 'public'; limit?: number; offset?: number }) =>
     apiClient
       .get<{ items: SavedFormulaDTO[] }>('/formulas/library', { params })
-      .then((r) => (r.data.items ?? []).map(normalizeSavedFormula)),
+      .then((r) => (r.data.items ?? []).map(normalizeSavedFormula).filter((f) => isAvailableFormula(f.expression))),
   createSaved: (data: { name: string; rule_type: RuleType; expression: string; description?: string }) =>
     apiClient
       .post<{ formula: SavedFormulaDTO }>('/formulas/library', data)

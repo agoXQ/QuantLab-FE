@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test:formula": "node --test scripts/formula-availability.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

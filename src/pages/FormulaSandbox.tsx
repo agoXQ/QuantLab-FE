@@ -1,3 +1,4 @@
+import { isAvailableFormula } from '@/dsl/availability';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -134,7 +135,7 @@ export default function FormulaSandbox() {
                   style={{ width: 260 }}
                   value={presetFormula}
                   onChange={pickPresetFormula}
-                  options={formulaStore.formulas.map((f) => ({
+                  options={formulaStore.formulas.filter((f) => isAvailableFormula(f.expression)).map((f) => ({
                     label: `${f.name}（${RULE_TYPES.find((r) => r.type === f.rule_type)?.label ?? f.rule_type}）`,
                     value: f.id,
                   }))}
@@ -144,7 +145,7 @@ export default function FormulaSandbox() {
               <FormulaEditor
                 value={expr}
                 onChange={setExpr}
-                placeholder="输入 DSL 公式表达式，例如：ROE > 15 AND PE < 20"
+                placeholder="输入 DSL 公式表达式，例如：CLOSE > MA(CLOSE,20) AND VOL > MA(VOL,5)"
                 height="120px"
               />
               <Paragraph type="secondary" style={{ fontSize: 11, margin: 0 }}>
@@ -264,7 +265,7 @@ function ResultTable({ result }: { result: EvaluateResult }) {
         dataSource={result.values.map((v) => ({ ...v, key: v.stock_code }))}
         columns={[
           { title: '股票代码', dataIndex: 'stock_code', render: (c: string) => <Text style={{ fontFamily: 'monospace' }}>{c}</Text> },
-          { title: '计算值', dataIndex: 'value', align: 'right' as const, render: (v: number) => <Text style={{ fontFamily: 'monospace' }}>{v.toFixed(4)}</Text> },
+          { title: '计算值', dataIndex: 'value', align: 'right' as const, render: (v: number | null) => <Text style={{ fontFamily: 'monospace' }}>{v == null ? '数据不足' : v.toFixed(4)}</Text> },
         ]}
         pagination={false}
         size="small"

@@ -1,3 +1,4 @@
+import { isAvailableFormula } from '@/dsl/availability';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RuleType } from '@/dsl/ruleTypes';
@@ -28,11 +29,11 @@ interface FormulaStore {
 // with no page changes.
 const seedFormulas: SavedFormula[] = [
   {
-    id: 'seed-roe-value',
-    name: '高ROE低估值',
+    id: 'seed-price-volume',
+    name: '价量趋势选股',
     rule_type: 'stock_select',
-    expression: 'ROE > 15\nAND PE < 20\nAND MarketCap > 5e9',
-    description: 'ROE 大于 15 且 PE 小于 20 且市值大于 50 亿',
+    expression: 'CLOSE > MA(CLOSE,20)\nAND VOL > MA(VOL,5)',
+    description: '收盘价站上 20 日均线且成交量高于 5 日均量',
     visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
@@ -68,11 +69,11 @@ const seedFormulas: SavedFormula[] = [
     updated_at: Date.now(),
   },
   {
-    id: 'seed-roe-growth-rank',
-    name: 'ROE×增长排序',
+    id: 'seed-price-roc-rank',
+    name: '20 日涨幅排序',
     rule_type: 'ranking_rule',
-    expression: 'ROE * ProfitGrowth',
-    description: 'ROE 乘以利润增长率作为排序权重',
+    expression: 'ROC(CLOSE,20)',
+    description: '按 20 日价格涨幅排序',
     visibility: 1,
     created_at: Date.now(),
     updated_at: Date.now(),
@@ -106,7 +107,7 @@ export const useFormulaStore = create<FormulaStore>()(
         })),
       remove: (id) =>
         set((s) => ({ formulas: s.formulas.filter((f) => f.id !== id) })),
-      getByType: (type) => get().formulas.filter((f) => f.rule_type === type),
+      getByType: (type) => get().formulas.filter((f) => f.rule_type === type && isAvailableFormula(f.expression)),
     }),
     { name: 'quantlab-formulas' },
   ),
