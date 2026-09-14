@@ -1,7 +1,7 @@
 // Presentation filter for cached catalogs and locally saved formulas. The
 // server's OHLCV capability guard is authoritative for validation/execution.
 export const AVAILABLE_FUNCTIONS = new Set([
-  'EMA', 'SMA', 'MACD', 'RSI', 'MA', 'WMA', 'STD', 'ROC', 'BOLL', 'CCI', 'WR', 'ABS', 'MAX', 'MIN',
+  'MACD_DIF', 'MACD_DEA', 'MACD_HIST', 'BOLL_MID', 'BOLL_UP', 'BOLL_DOWN', 'TR', 'ATR', 'EMA', 'SMA', 'MACD', 'RSI', 'MA', 'WMA', 'STD', 'ROC', 'BOLL', 'CCI', 'WR', 'ABS', 'MAX', 'MIN',
   'SUM', 'AVG', 'COUNT', 'REF', 'HHV', 'LLV', 'HHVBARS', 'LLVBARS',
   'BARSLAST', 'CROSS', 'CROSSDOWN', 'LONGCROSS', 'EVERY', 'EXIST',
 ]);
