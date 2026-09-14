@@ -13,13 +13,14 @@ test('cached and locally saved retired expressions are not offered', () => {
     'PE < 20', 'roe > 15', 'MarketCap > 1', 'FloatMarketCap > 1',
     'KDJ(C,9,3,3)', 'OBV(C,V)', 'FILTER(C>O,3)',
     'TF("5m",C)', 'LAST_TF("5m",C)', 'ANY_TF("5m",C>O)', 'EVERY_TF("5m",C>O)',
-    'COUNT(C>O AND V>0,3)', 'COUNT(NOT (C>O),3)',
-    'x := C>O AND V>0; COUNT(x,3)',
+    'COUNT(ROE>15 AND C>O,3)', 'x := C>O; COUNT(x AND PE>0,3)',
   ]) assert.equal(isAvailableFormula(expression), false, expression);
 });
 
 test('OHLCV examples and outer Boolean combinations remain usable', () => {
   for (const expression of [
+    'COUNT(C>O AND V>0,3)', 'COUNT(NOT (C>O),3)', 'x := C>O AND V>0; COUNT(x,3)',
+    'EVERY(C>O OR V>0,3)', 'EXIST(C>O AND V>0,3)',
     'MACD_DIF(C,12,26,9)', 'MACD_DEA(C,12,26,9)', 'MACD_HIST(C,12,26,9)',
     'BOLL_MID(C,20,2)', 'BOLL_UP(C,20,2)', 'BOLL_DOWN(C,20,2)', 'TR(H,L,C)', 'ATR(H,L,C,14)',
     'EMA(C,20)', 'SMA(C,20)', 'SMA(C,20,2)', 'MACD(C,12,26,9)', 'RSI(C,14)',

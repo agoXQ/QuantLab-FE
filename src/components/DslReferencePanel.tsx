@@ -46,7 +46,7 @@ export default function DslReferencePanel({ functions, onApplyExample }: Props) 
   return (
     <Card title={<Space><ThunderboltOutlined /> DSL 参考</Space>} styles={{ body: { padding: 16 } }}>
       <Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
-        当前开放开高低收、成交量和成交额公式；财务、多周期及未完成验证的指标暂不开放。AND / OR / NOT 仅用于公式最外层组合。函数名大小写不敏感。输入时自动补全，Ctrl+Space 手动触发，Tab / Enter 确认。
+        当前开放开高低收、成交量和成交额公式；财务、多周期及未完成验证的指标暂不开放。AND / OR / NOT 支持历史组合条件，可用于 COUNT、EVERY、EXIST 等函数。函数名大小写不敏感。输入时自动补全，Ctrl+Space 手动触发，Tab / Enter 确认。
       </Paragraph>
 
       <ReferenceGroup title="公式示例">
